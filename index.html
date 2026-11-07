@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1B2D">
+<title>¿Cuánto me sale?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EAEEF4;
+    --surface: #FFFFFF;
+    --ink: #0F1B2D;
+    --muted: #5B6778;
+    --line: #D5DCE7;
+    --accent: #2447F5;
+    --accent-soft: #E3E9FF;
+    --save: #17825A;
+    --sun: #FFD23F;
+    --danger: #C23A2B;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  }
+  .app { max-width: 560px; margin: 0 auto; }
+
+  h1 { font-size: 34px; line-height: 1.05; margin: 4px 0 6px; font-weight: 800; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  h2 { font-size: 19px; margin: 0 0 12px; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* Tasa */
+  .rate { background: var(--ink); color: #fff; border-radius: 18px; padding: 14px 16px; margin-bottom: 22px; }
+  .rate-row { display: flex; align-items: center; gap: 10px; }
+  .rate-row label { font-size: 14px; color: #B8C3D6; white-space: nowrap; }
+  .rate-input { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.1); border-radius: 12px; padding: 0 12px; }
+  .rate-input span { color: #B8C3D6; font-size: 15px; }
+  .rate-input input { width: 100%; background: transparent; border: 0; color: var(--sun); font: inherit; font-size: 22px; font-weight: 700; padding: 8px 0; outline: none; }
+  .rate-input:focus-within { outline: 2px solid var(--sun); }
+  .rate-status { margin: 8px 2px 0; font-size: 13px; color: #B8C3D6; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .link-btn { background: none; border: 0; color: var(--sun); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 0; }
+  .link-btn:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; border-radius: 4px; }
+
+  /* Productos */
+  section { margin-bottom: 24px; }
+  .item { background: var(--surface); border-radius: 16px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--line); }
+  .item-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .item-head input { flex: 1; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field > span.lbl { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .field.full { grid-column: 1 / -1; }
+  input[type=text] {
+    width: 100%; min-width: 0; font: inherit; font-size: 17px; color: var(--ink);
+    background: #F5F7FB; border: 1.5px solid transparent; border-radius: 10px; padding: 10px 12px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); background: #fff; }
+  input::placeholder { color: #9AA5B5; }
+  .with-seg { display: flex; gap: 8px; align-items: stretch; }
+  .with-seg input { flex: 1; }
+  .seg { display: inline-flex; background: #F5F7FB; border-radius: 10px; padding: 3px; flex: none; }
+  .seg button {
+    font: inherit; font-size: 14px; font-weight: 700; color: var(--muted); background: transparent; border: 0;
+    border-radius: 8px; padding: 0 12px; min-height: 36px; cursor: pointer;
+  }
+  .seg button[aria-pressed=true] { background: var(--accent); color: #fff; }
+  .seg button:focus-visible, .btn:focus-visible, .x:focus-visible, .switch:focus-visible, .link-add:focus-visible, .h-btns button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg.wide { display: flex; }
+  .seg.wide button { flex: 1; min-height: 42px; }
+  .x { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 0; background: #F5F7FB; color: var(--danger); font-size: 20px; line-height: 1; cursor: pointer; }
+  .x.small { width: 36px; }
+
+  /* Descuentos encadenados */
+  .descs { display: flex; flex-direction: column; gap: 8px; }
+  .link-add { align-self: flex-start; background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; font-weight: 700; padding: 6px 0 0; cursor: pointer; }
+
+  .item-result { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 14px; color: var(--muted); }
+  .item-result .line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .item-result strong { color: var(--ink); font-size: 17px; }
+  .item-result .cop { color: var(--ink); font-weight: 700; }
+  .item-result .chain { margin-top: 6px; font-size: 13px; }
+  .tag-save { color: var(--save); font-weight: 700; }
+  .btn { font: inherit; font-weight: 700; font-size: 16px; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer; }
+  .btn.add { width: 100%; background: var(--accent-soft); color: var(--accent); }
+
+  /* Envío */
+  .ship { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .ship-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .ship-head h2 { margin: 0; }
+  .switch { position: relative; width: 52px; height: 30px; border-radius: 30px; border: 0; background: #C3CCDA; cursor: pointer; flex: none; padding: 0; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .15s; }
+  .switch[aria-checked=true] { background: var(--accent); }
+  .switch[aria-checked=true]::after { transform: translateX(22px); }
+  .ship-body { margin-top: 14px; display: none; }
+  .ship.on .ship-body { display: block; }
+  .ship-body .field { margin-top: 12px; }
+  .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+  /* Resultado */
+  .total { background: var(--ink); color: #fff; border-radius: 22px; padding: 20px 18px; }
+  .rows { margin: 0 0 14px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 15px; color: #C9D3E3; }
+  .row b { color: #fff; font-weight: 500; text-align: right; }
+  .row.save b { color: #6FE0B0; }
+  .row small { color: #8D9AB0; }
+  .big { border-top: 1px solid rgba(255,255,255,.15); padding-top: 14px; }
+  .big .usd { font-size: 17px; color: #C9D3E3; }
+  .big .usd b { color: #fff; font-size: 22px; font-weight: 700; }
+  .big .cop-total { font-size: 40px; line-height: 1.05; font-weight: 800; color: var(--sun); letter-spacing: -0.02em; margin-top: 4px; word-break: break-word; }
+  .big .cop-total small { font-size: 16px; font-weight: 500; color: #C9D3E3; letter-spacing: 0; }
+  .warn { margin-top: 12px; font-size: 13px; color: #FFB4A8; }
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .actions button { flex: 1; font: inherit; font-weight: 700; font-size: 15px; border-radius: 12px; padding: 12px 10px; cursor: pointer; }
+  .actions .save-btn { background: var(--sun); color: var(--ink); border: 0; }
+  .actions .save-btn:disabled { opacity: .45; cursor: default; }
+  .actions .new-btn { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.35); }
+  .actions button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .foot { margin-top: 16px; font-size: 12px; color: var(--muted); text-align: center; }
+
+  /* Historial */
+  .hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .hist-head .link-btn { color: var(--danger); }
+  .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; padding: 16px; color: var(--muted); font-size: 14px; }
+  .h { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+  .h-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .h-top strong { font-size: 16px; overflow-wrap: anywhere; }
+  .h-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .h-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .h-tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .h-tot span { color: var(--muted); font-size: 14px; }
+  .h-tot b { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  .h-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .h-btns button { flex: 1; font: inherit; font-weight: 700; font-size: 14px; border: 0; border-radius: 10px; padding: 9px 10px; cursor: pointer; background: var(--accent-soft); color: var(--accent); }
+  .h-btns button[data-hact=borrar] { background: #F5F7FB; color: var(--danger); flex: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <h1>¿Cuánto me sale?</h1>
+  <p class="sub">Compra en dólares, con descuentos, y mira cuánto pagas en pesos.</p>
+
+  <div class="rate">
+    <div class="rate-row">
+      <label for="tasa">1 USD =</label>
+      <div class="rate-input">
+        <span>$</span>
+        <input id="tasa" type="text" inputmode="decimal" autocomplete="off" aria-label="Tasa de cambio en pesos colombianos por dólar">
+        <span>COP</span>
+      </div>
+    </div>
+    <div class="rate-status">
+      <span id="tasaEstado">Cargando tasa…</span>
+      <button class="link-btn" id="tasaRefrescar" type="button">Actualizar</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>Productos</h2>
+    <div id="items"></div>
+    <button class="btn add" id="agregar" type="button">+ Agregar otro producto</button>
+  </section>
+
+  <section>
+    <div class="ship" id="ship">
+      <div class="ship-head">
+        <h2>Calcular envío a Colombia</h2>
+        <button class="switch" id="envioSwitch" type="button" role="switch" aria-checked="false" aria-label="Calcular envío"></button>
+      </div>
+      <div class="ship-body">
+        <div class="seg wide" id="ciudad" role="group" aria-label="Ciudad de entrega">
+          <button type="button" data-ciudad="bogota" aria-pressed="true">Bogotá · US$ 15</button>
+          <button type="button" data-ciudad="otra" aria-pressed="false">Otra ciudad · US$ 19</button>
+        </div>
+        <p class="note">US$ 2,40 por libra, más el cargo fijo. El cargo fijo incluye tránsito hasta tu puerta, seguro hasta US$ 100 y trámite de aduana.</p>
+        <div class="field">
+          <span class="lbl">Impuestos adicionales, si te los cobran (US$)</span>
+          <input type="text" id="impuestos" inputmode="decimal" autocomplete="off" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="total" aria-live="polite">
+      <div class="rows" id="filas"></div>
+      <div class="big">
+        <div class="usd">Total en dólares <b id="totalUsd">US$ 0,00</b></div>
+        <div class="cop-total" id="totalCop">$ 0 <small>COP</small></div>
+      </div>
+      <div class="warn" id="aviso" hidden></div>
+      <div class="actions">
+        <button class="save-btn" id="guardarHist" type="button">Guardar en historial</button>
+        <button class="new-btn" id="nuevo" type="button">Nuevo cálculo</button>
+      </div>
+    </div>
+    <p class="foot">La tasa viene de open.er-api.com y puede diferir un poco de la TRM oficial.</p>
+  </section>
+
+  <section>
+    <div class="hist-head">
+      <h2>Historial</h2>
+      <button class="link-btn" id="borrarHist" type="button" hidden>Borrar todo</button>
+    </div>
+    <div id="hist"></div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Tarifario ----------
+  var TARIFA_LB = 2.40;
+  var ENVIO_FIJO = { bogota: 15, otra: 19 };
+  var LB_POR_KG = 2.20462;
+  var KEY = 'cuanto-me-sale-v1';
+  var KEY_HIST = 'cuanto-me-sale-historial-v1';
+  var MAX_HIST = 50;
+  var API = 'https://open.er-api.com/v6/latest/USD';
+
+  // ---------- Estado ----------
+  var uid = 0;
+  function nuevoItem() {
+    uid += 1;
+    return {
+      id: 'i' + Date.now() + '_' + uid,
+      nombre: '', precio: '', cant: '1',
+      descs: [{ v: '', t: 'pct' }],
+      peso: '', unidad: 'lb'
+    };
+  }
+  var state = {
+    items: [nuevoItem()],
+    envio: false,
+    ciudad: 'bogota',
+    impuestos: '',
+    tasa: null,
+    tasaFecha: null,
+    tasaManual: false
+  };
+  var historial = [];
+
+  function migrarItem(it) {
+    // Compatibilidad con la versión anterior (un solo descuento)
+    if (!Array.isArray(it.descs) || !it.descs.length) {
+      it.descs = [{ v: it.desc || '', t: it.descTipo || 'pct' }];
+    }
+    delete it.desc;
+    delete it.descTipo;
+    return it;
+  }
+
+  function guardar() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function cargar() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && Array.isArray(s.items) && s.items.length) {
+          state = Object.assign(state, s);
+          state.items = state.items.map(migrarItem);
+        }
+      }
+    } catch (e) {}
+    try {
+      var h = localStorage.getItem(KEY_HIST);
+      if (h) {
+        var arr = JSON.parse(h);
+        if (Array.isArray(arr)) historial = arr;
+      }
+    } catch (e) {}
+  }
+  function guardarHist() {
+    try { localStorage.setItem(KEY_HIST, JSON.stringify(historial)); } catch (e) {}
+  }
+
+  // ---------- Utilidades ----------
+  function num(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.'));
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+  function usd(n) {
+    return 'US$ ' + n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function usdCorto(n) {
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function cop(n) {
+    return '$ ' + Math.round(n).toLocaleString('es-CO');
+  }
+  function lb(n) {
+    return n.toLocaleString('es-CO', { maximumFractionDigits: 2 });
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function $(id) { return document.getElementById(id); }
+  function copiar(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // ---------- Cálculo ----------
+  // Los descuentos se aplican en cadena: cada uno sobre el precio que dejó el anterior.
+  function calcItem(it) {
+    var precio = num(it.precio);
+    var cant = Math.max(1, Math.floor(num(it.cant)) || 1);
+    var p = precio;
+    var pasos = [precio];
+    (it.descs || []).forEach(function (d) {
+      var v = num(d.v);
+      if (v <= 0 || p <= 0) return;
+      var quita = d.t === 'pct' ? p * Math.min(v, 100) / 100 : Math.min(v, p);
+      p = p - quita;
+      pasos.push(p);
+    });
+    var pesoUnit = num(it.peso) * (it.unidad === 'kg' ? LB_POR_KG : 1);
+    return {
+      bruto: precio * cant,
+      descuento: (precio - p) * cant,
+      final: p * cant,
+      unitFinal: p,
+      unitBruto: precio,
+      pasos: pasos,
+      libras: pesoUnit * cant,
+      cant: cant
+    };
+  }
+
+  function calcTodo() {
+    var bruto = 0, descuento = 0, productos = 0, libras = 0, sinPeso = 0;
+    state.items.forEach(function (it) {
+      var c = calcItem(it);
+      bruto += c.bruto; descuento += c.descuento; productos += c.final; libras += c.libras;
+      if (c.bruto > 0 && c.libras === 0) sinPeso += 1;
+    });
+    var fijo = ENVIO_FIJO[state.ciudad] || ENVIO_FIJO.otra;
+    var porPeso = libras * TARIFA_LB;
+    var envio = state.envio ? porPeso + fijo : 0;
+    var imp = state.envio ? num(state.impuestos) : 0;
+    var total = productos + envio + imp;
+    return { bruto: bruto, descuento: descuento, productos: productos, libras: libras, fijo: fijo, porPeso: porPeso, envio: envio, imp: imp, total: total, sinPeso: sinPeso };
+  }
+
+  // ---------- Render: productos ----------
+  function descRowHTML(d, i, puedeBorrar) {
+    return '<div class="with-seg">' +
+      '<input type="text" data-f="dv" data-di="' + i + '" inputmode="decimal" autocomplete="off" value="' + esc(d.v) + '" placeholder="' + (i === 0 ? '20' : '30') + '" aria-label="Descuento ' + (i + 1) + '">' +
+      '<div class="seg" role="group" aria-label="Tipo del descuento ' + (i + 1) + '">' +
+        '<button type="button" data-act="dt" data-di="' + i + '" data-v="pct" aria-pressed="' + (d.t === 'pct') + '">%</button>' +
+        '<button type="button" data-act="dt" data-di="' + i + '" data-v="usd" aria-pressed="' + (d.t === 'usd') + '">US$</button>' +
+      '</div>' +
+      (puedeBorrar ? '<button class="x small" type="button" data-act="delDesc" data-di="' + i + '" aria-label="Quitar descuento ' + (i + 1) + '">×</button>' : '') +
+    '</div>';
+  }
+
+  function itemHTML(it, idx, puedeBorrar) {
+    var nd = it.descs.length;
+    var descRows = it.descs.map(function (d, i) { return descRowHTML(d, i, nd > 1); }).join('');
+    return '' +
+    '<div class="item" data-id="' + esc(it.id) + '">' +
+      '<div class="item-head">' +
+        '<input type="text" data-f="nombre" value="' + esc(it.nombre) + '" placeholder="Producto (ej: Tenis Adidas)" aria-label="Nombre del producto ' + (idx + 1) + '">' +
+        (puedeBorrar ? '<button class="x" type="button" data-act="borrar" aria-label="Quitar producto">×</button>' : '') +
+      '</div>' +
+      '<div class="grid">' +
+        '<div class="field"><span class="lbl">Precio (US$)</span>' +
+          '<input type="text" data-f="precio" inputmode="decimal" autocomplete="off" value="' + esc(it.precio) + '" placeholder="150"></div>' +
+        '<div class="field"><span class="lbl">Cantidad</span>' +
+          '<input type="text" data-f="cant" inputmode="numeric" autocomplete="off" value="' + esc(it.cant) + '" placeholder="1"></div>' +
+        '<div class="field full"><span class="lbl">Descuentos (cada uno se aplica sobre el precio que dejó el anterior)</span>' +
+          '<div class="descs">' + descRows + '</div>' +
+          '<button class="link-add" type="button" data-act="addDesc">+ Agregar otro descuento (ej: cupón)</button>' +
+        '</div>' +
+        '<div class="field full"><span class="lbl">Peso por unidad (solo se usa para el envío)</span>' +
+          '<div class="with-seg">' +
+            '<input type="text" data-f="peso" inputmode="decimal" autocomplete="off" value="' + esc(it.peso) + '" placeholder="2">' +
+            '<div class="seg" role="group" aria-label="Unidad de peso">' +
+              '<button type="button" data-act="unidad" data-v="lb" aria-pressed="' + (it.unidad === 'lb') + '">lb</button>' +
+              '<button type="button" data-act="unidad" data-v="kg" aria-pressed="' + (it.unidad === 'kg') + '">kg</button>' +
+            '</div>' +
+          '</div></div>' +
+      '</div>' +
+      '<div class="item-result" data-res></div>' +
+    '</div>';
+  }
+
+  function renderItems() {
+    var n = state.items.length;
+    $('items').innerHTML = state.items.map(function (it, i) { return itemHTML(it, i, n > 1); }).join('');
+    actualizar();
+  }
+
+  function actualizarItems() {
+    var tasa = num(state.tasa);
+    state.items.forEach(function (it) {
+      var el = document.querySelector('[data-id="' + it.id + '"] [data-res]');
+      if (!el) return;
+      var c = calcItem(it);
+      if (c.bruto <= 0) { el.innerHTML = '<div class="line"><span>Escribe el precio para ver cuánto queda</span></div>'; return; }
+      var html = '<div class="line"><span>Queda en <strong>' + usd(c.final) + '</strong>';
+      if (c.descuento > 0) html += ' <span class="tag-save">(ahorras ' + usd(c.descuento) + ')</span>';
+      html += '</span>';
+      if (tasa > 0) html += '<span class="cop">' + cop(c.final * tasa) + ' COP</span>';
+      html += '</div>';
+      if (c.pasos.length > 2) {
+        var efectivo = (1 - c.unitFinal / c.unitBruto) * 100;
+        html += '<div class="chain">' + c.pasos.map(usdCorto).join(' → ') +
+          (c.cant > 1 ? ' por unidad' : '') +
+          ' · <span class="tag-save">descuento total real: ' + efectivo.toLocaleString('es-CO', { maximumFractionDigits: 1 }) + '%</span></div>';
+      }
+      el.innerHTML = html;
+    });
+  }
+
+  // ---------- Render: total ----------
+  function actualizarTotal() {
+    var t = calcTodo();
+    var tasa = num(state.tasa);
+    var filas = '';
+    filas += '<div class="row"><span>Productos sin descuento</span><b>' + usd(t.bruto) + '</b></div>';
+    if (t.descuento > 0) filas += '<div class="row save"><span>Descuentos</span><b>− ' + usd(t.descuento) + '</b></div>';
+    filas += '<div class="row"><span>Productos con descuento</span><b>' + usd(t.productos) + '</b></div>';
+    if (state.envio) {
+      filas += '<div class="row"><span>Envío por peso <small>(' + lb(t.libras) + ' lb × ' + usd(TARIFA_LB) + ')</small></span><b>' + usd(t.porPeso) + '</b></div>';
+      filas += '<div class="row"><span>Cargo fijo <small>(' + (state.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad') + ')</small></span><b>' + usd(t.fijo) + '</b></div>';
+      if (t.imp > 0) filas += '<div class="row"><span>Impuestos adicionales</span><b>' + usd(t.imp) + '</b></div>';
+    }
+    $('filas').innerHTML = filas;
+    $('totalUsd').textContent = usd(t.total);
+    $('totalCop').innerHTML = tasa > 0
+      ? cop(t.total * tasa) + ' <small>COP</small>'
+      : '<small>Escribe la tasa para ver el total en pesos</small>';
+
+    var aviso = $('aviso');
+    if (state.envio && t.sinPeso > 0) {
+      aviso.hidden = false;
+      aviso.textContent = t.sinPeso === 1
+        ? 'Un producto no tiene peso: el envío solo suma el cargo fijo por ahora.'
+        : t.sinPeso + ' productos no tienen peso: el envío solo suma el cargo fijo por ahora.';
+    } else {
+      aviso.hidden = true;
+    }
+    $('guardarHist').disabled = t.bruto <= 0;
+  }
+
+  function actualizarEnvioUI() {
+    $('ship').classList.toggle('on', state.envio);
+    $('envioSwitch').setAttribute('aria-checked', String(state.envio));
+    var btns = document.querySelectorAll('#ciudad button');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-ciudad') === state.ciudad));
+    }
+  }
+
+  function actualizar() {
+    actualizarItems();
+    actualizarTotal();
+    guardar();
+  }
+
+  // ---------- Eventos: productos ----------
+  function itemDe(el) {
+    var card = el.closest('[data-id]');
+    if (!card) return null;
+    var id = card.getAttribute('data-id');
+    for (var i = 0; i < state.items.length; i++) if (state.items[i].id === id) return state.items[i];
+    return null;
+  }
+
+  $('items').addEventListener('input', function (e) {
+    var f = e.target.getAttribute('data-f');
+    var it = itemDe(e.target);
+    if (!f || !it) return;
+    if (f === 'dv') {
+      var di = parseInt(e.target.getAttribute('data-di'), 10);
+      if (it.descs[di]) it.descs[di].v = e.target.value;
+    } else {
+      it[f] = e.target.value;
+    }
+    actualizar();
+  });
+
+  $('items').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var it = itemDe(b);
+    if (!it) return;
+    var act = b.getAttribute('data-act');
+    var di = parseInt(b.getAttribute('data-di'), 10);
+    var foco = null;
+    if (act === 'borrar') {
+      state.items = state.items.filter(function (x) { return x !== it; });
+    } else if (act === 'unidad') {
+      it.unidad = b.getAttribute('data-v');
+    } else if (act === 'dt') {
+      if (it.descs[di]) it.descs[di].t = b.getAttribute('data-v');
+    } else if (act === 'addDesc') {
+      it.descs.push({ v: '', t: 'pct' });
+      foco = { id: it.id, di: it.descs.length - 1 };
+    } else if (act === 'delDesc') {
+      if (it.descs.length > 1) it.descs.splice(di, 1);
+    } else {
+      return;
+    }
+    renderItems();
+    if (foco) {
+      var inp = document.querySelector('[data-id="' + foco.id + '"] [data-f="dv"][data-di="' + foco.di + '"]');
+      if (inp) inp.focus();
+    }
+  });
+
+  $('agregar').addEventListener('click', function () {
+    state.items.push(nuevoItem());
+    renderItems();
+    var inputs = document.querySelectorAll('#items [data-f="nombre"]');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
+  // ---------- Eventos: envío ----------
+  $('envioSwitch').addEventListener('click', function () {
+    state.envio = !state.envio;
+    actualizarEnvioUI();
+    actualizar();
+  });
+  $('ciudad').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ciudad]');
+    if (!b) return;
+    state.ciudad = b.getAttribute('data-ciudad');
+    actualizarEnvioUI();
+    actualizar();
+  });
+  $('impuestos').addEventListener('input', function (e) {
+    state.impuestos = e.target.value;
+    actualizar();
+  });
+
+  // ---------- Historial ----------
+  function fechaHora(ms) {
+    return new Date(ms).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function tituloPedido(items) {
+    var nombres = items.map(function (it) { return (it.nombre || '').trim(); }).filter(Boolean);
+    if (nombres.length) return nombres.join(', ');
+    return items.length === 1 ? 'Producto sin nombre' : 'Pedido de ' + items.length + ' productos';
+  }
+
+  function renderHist() {
+    var cont = $('hist');
+    $('borrarHist').hidden = historial.length === 0;
+    if (!historial.length) {
+      cont.innerHTML = '<div class="empty">Aquí quedan guardados tus cálculos, con la tasa que había ese día. Toca "Guardar en historial" cuando tengas uno listo.</div>';
+      return;
+    }
+    cont.innerHTML = historial.map(function (h) {
+      var n = h.items.length;
+      var sub = n + (n === 1 ? ' producto' : ' productos');
+      if (h.envio) sub += ' · envío a ' + (h.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad');
+      if (h.tasa) sub += ' · tasa $ ' + Number(h.tasa).toLocaleString('es-CO', { maximumFractionDigits: 2 });
+      return '<div class="h" data-hid="' + esc(h.id) + '">' +
+        '<div class="h-top"><strong>' + esc(tituloPedido(h.items)) + '</strong><span class="h-date">' + esc(fechaHora(h.fecha)) + '</span></div>' +
+        '<div class="h-sub">' + esc(sub) + '</div>' +
+        '<div class="h-tot"><span>' + usd(h.totalUsd) + '</span><b>' + (h.totalCop != null ? cop(h.totalCop) + ' COP' : 'Sin tasa') + '</b></div>' +
+        '<div class="h-btns"><button type="button" data-hact="cargar">Cargar para editar</button><button type="button" data-hact="borrar" aria-label="Borrar este cálculo">Borrar</button></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  var guardadoTimer = null;
+  $('guardarHist').addEventListener('click', function () {
+    var t = calcTodo();
+    if (t.bruto <= 0) return;
+    var tasa = num(state.tasa);
+    historial.unshift({
+      id: 'h' + Date.now(),
+      fecha: Date.now(),
+      items: copiar(state.items),
+      envio: state.envio,
+      ciudad: state.ciudad,
+      impuestos: state.impuestos,
+      tasa: tasa > 0 ? tasa : null,
+      totalUsd: t.total,
+      totalCop: tasa > 0 ? t.total * tasa : null
+    });
+    if (historial.length > MAX_HIST) historial.length = MAX_HIST;
+    guardarHist();
+    renderHist();
+    var btn = $('guardarHist');
+    btn.textContent = 'Guardado ✓';
+    clearTimeout(guardadoTimer);
+    guardadoTimer = setTimeout(function () { btn.textContent = 'Guardar en historial'; }, 1600);
+  });
+
+  $('nuevo').addEventListener('click', function () {
+    state.items = [nuevoItem()];
+    state.envio = false;
+    state.impuestos = '';
+    $('impuestos').value = '';
+    actualizarEnvioUI();
+    renderItems();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  $('hist').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-hact]');
+    if (!b) return;
+    var card = b.closest('[data-hid]');
+    if (!card) return;
+    var id = card.getAttribute('data-hid');
+    var h = null;
+    for (var i = 0; i < historial.length; i++) if (historial[i].id === id) { h = historial[i]; break; }
+    if (!h) return;
+    if (b.getAttribute('data-hact') === 'borrar') {
+      historial = historial.filter(function (x) { return x !== h; });
+      guardarHist();
+      renderHist();
+    } else {
+      state.items = copiar(h.items).map(function (it) { var n = migrarItem(it); uid += 1; n.id = 'i' + Date.now() + '_' + uid; return n; });
+      state.envio = !!h.envio;
+      state.ciudad = h.ciudad || 'bogota';
+      state.impuestos = h.impuestos || '';
+      $('impuestos').value = state.impuestos;
+      actualizarEnvioUI();
+      renderItems();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  $('borrarHist').addEventListener('click', function () {
+    if (window.confirm('¿Borrar todo el historial? No se puede deshacer.')) {
+      historial = [];
+      guardarHist();
+      renderHist();
+    }
+  });
+
+  // ---------- Tasa de cambio ----------
+  function fechaCorta(ms) {
+    return new Date(ms).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  }
+  function mostrarTasa() {
+    var inp = $('tasa');
+    if (document.activeElement !== inp) {
+      inp.value = state.tasa ? Number(state.tasa).toLocaleString('es-CO', { maximumFractionDigits: 2 }) : '';
+    }
+  }
+  function estado(texto) { $('tasaEstado').textContent = texto; }
+
+  function cargarTasa() {
+    estado('Consultando la tasa del día…');
+    return fetch(API, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+      .then(function (j) {
+        var t = j && j.rates && j.rates.COP;
+        if (!t) throw new Error('sin COP');
+        state.tasa = t;
+        state.tasaFecha = j.time_last_update_unix ? j.time_last_update_unix * 1000 : Date.now();
+        state.tasaManual = false;
+        mostrarTasa();
+        estado('Tasa del día · actualizada el ' + fechaCorta(state.tasaFecha));
+        actualizar();
+      })
+      .catch(function () {
+        mostrarTasa();
+        if (state.tasa) {
+          estado('Sin conexión · usando la tasa guardada' + (state.tasaFecha ? ' del ' + fechaCorta(state.tasaFecha) : ''));
+        } else {
+          estado('No se pudo traer la tasa. Escríbela a mano.');
+        }
+        actualizar();
+      });
+  }
+
+  $('tasa').addEventListener('input', function (e) {
+    var v = num(e.target.value);
+    state.tasa = v > 0 ? v : null;
+    state.tasaManual = true;
+    estado('Tasa escrita a mano · toca Actualizar para usar la del día');
+    actualizar();
+  });
+  $('tasa').addEventListener('blur', mostrarTasa);
+  $('tasaRefrescar').addEventListener('click', cargarTasa);
+
+  // ---------- Inicio ----------
+  cargar();
+  $('impuestos').value = state.impuestos || '';
+  actualizarEnvioUI();
+  renderItems();
+  renderHist();
+  mostrarTasa();
+  if (state.tasaManual && state.tasa) {
+    estado('Tasa escrita a mano · toca Actualizar para usar la del día');
+  } else {
+    if (state.tasa && state.tasaFecha) estado('Tasa guardada del ' + fechaCorta(state.tasaFecha) + ' · actualizando…');
+    cargarTasa();
+  }
+})();
+</script>
+</body>
+</html>
