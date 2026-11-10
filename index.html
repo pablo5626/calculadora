@@ -698,13 +698,15 @@
     if (historial.length > MAX_HIST) historial.length = MAX_HIST;
     guardarHist();
     renderHist();
+    limpiarCalculo();
     var btn = $('guardarHist');
     btn.textContent = 'Guardado ✓';
     clearTimeout(guardadoTimer);
     guardadoTimer = setTimeout(function () { btn.textContent = 'Guardar en historial'; }, 1600);
   });
 
-  $('nuevo').addEventListener('click', function () {
+  // Deja la calculadora en blanco para empezar otro cálculo
+  function limpiarCalculo() {
     state.items = [nuevoItem()];
     state.envio = false;
     state.cargoFijo = true;
@@ -713,7 +715,8 @@
     actualizarEnvioUI();
     renderItems();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  }
+  $('nuevo').addEventListener('click', limpiarCalculo);
 
   $('hist').addEventListener('click', function (e) {
     var b = e.target.closest('[data-hact]');
