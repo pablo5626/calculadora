@@ -117,6 +117,10 @@
   .ship-body { margin-top: 14px; display: none; }
   .ship.on .ship-body { display: block; }
   .ship-body .field { margin-top: 12px; }
+  .opt-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .opt-row strong { font-size: 16px; }
+  .opt-row .note { margin: 2px 0 0; }
+  .seg.off { opacity: .4; }
   .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
 
   /* Resultado */
@@ -162,6 +166,12 @@
   .modal-box { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 520px; max-height: 100%; }
   .modal-img { overflow: auto; max-height: 72vh; border-radius: 14px; background: #fff; -webkit-overflow-scrolling: touch; }
   .modal-img img { display: block; width: 100%; height: auto; }
+  .fmt { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #C9D3E3; font-size: 14px; }
+  .fmt .seg { background: rgba(255,255,255,.14); }
+  .fmt .seg button { color: #C9D3E3; min-height: 38px; padding: 0 16px; }
+  .fmt .seg button[aria-pressed=true] { background: var(--sun); color: var(--ink); }
+  .fmt .seg button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .fmt-hint { margin: 0; font-size: 13px; color: #B8C3D6; }
   .modal-btns { display: flex; gap: 8px; }
   .modal-btns button { flex: 1; font: inherit; font-weight: 700; font-size: 16px; border-radius: 12px; padding: 13px 10px; cursor: pointer; background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.4); }
   .modal-btns button.m-primary { background: var(--sun); color: var(--ink); border: 0; }
@@ -204,6 +214,13 @@
         <button class="switch" id="envioSwitch" type="button" role="switch" aria-checked="false" aria-label="Calcular envío"></button>
       </div>
       <div class="ship-body">
+        <div class="opt-row">
+          <div>
+            <strong>Cobrar cargo fijo</strong>
+            <p class="note">Apágalo si este pedido viaja junto con otros en la misma caja: el cargo fijo se paga una vez por encargo, no por caja.</p>
+          </div>
+          <button class="switch" id="cargoSwitch" type="button" role="switch" aria-checked="true" aria-label="Cobrar cargo fijo"></button>
+        </div>
         <div class="seg wide" id="ciudad" role="group" aria-label="Ciudad de entrega">
           <button type="button" data-ciudad="bogota" aria-pressed="true">Bogotá · US$ 15</button>
           <button type="button" data-ciudad="otra" aria-pressed="false">Otra ciudad · US$ 19</button>
@@ -228,7 +245,7 @@
       <div class="actions">
         <button class="save-btn" id="guardarHist" type="button">Guardar en historial</button>
         <button class="new-btn" id="nuevo" type="button">Nuevo cálculo</button>
-        <button class="exp-btn" id="exportar" type="button">Exportar como imagen</button>
+        <button class="exp-btn" id="exportar" type="button">Exportar recibo</button>
       </div>
     </div>
     <p class="foot">La tasa viene de open.er-api.com y puede diferir un poco de la TRM oficial.</p>
@@ -244,9 +261,17 @@
 
 </div>
 
-<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-label="Imagen del cálculo">
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-label="Recibo del cálculo">
   <div class="modal-box">
-    <div class="modal-img"><img id="modalImg" alt="Resumen del cálculo con productos, descuentos y total"></div>
+    <div class="fmt" id="fmt" role="group" aria-label="Formato de exportación">
+      <span>Exportar como</span>
+      <div class="seg">
+        <button type="button" data-fmt="jpg" aria-pressed="true">Imagen JPG</button>
+        <button type="button" data-fmt="pdf" aria-pressed="false">PDF</button>
+      </div>
+    </div>
+    <div class="modal-img"><img id="modalImg" alt="Recibo con productos, descuentos y total"></div>
+    <p class="fmt-hint" id="fmtHint"></p>
     <div class="modal-btns">
       <button type="button" id="modalShare" class="m-primary" hidden>Compartir</button>
       <button type="button" id="modalDownload" class="m-primary">Descargar</button>
@@ -283,6 +308,7 @@
     items: [nuevoItem()],
     envio: false,
     ciudad: 'bogota',
+    cargoFijo: true,
     impuestos: '',
     tasa: null,
     tasaFecha: null,
@@ -395,7 +421,7 @@
       bruto += c.bruto; descuento += c.descuento; productos += c.final; libras += c.libras;
       if (c.bruto > 0 && c.libras === 0) sinPeso += 1;
     });
-    var fijo = ENVIO_FIJO[s.ciudad] || ENVIO_FIJO.otra;
+    var fijo = s.cargoFijo === false ? 0 : (ENVIO_FIJO[s.ciudad] || ENVIO_FIJO.otra);
     var porPeso = libras * TARIFA_LB;
     var envio = s.envio ? porPeso + fijo : 0;
     var imp = s.envio ? num(s.impuestos) : 0;
@@ -494,7 +520,9 @@
     filas += '<div class="row"><span>Productos con descuento</span><b>' + usd(t.productos) + '</b></div>';
     if (state.envio) {
       filas += '<div class="row"><span>Envío por peso <small>(' + lb(t.libras) + ' lb × ' + usd(TARIFA_LB) + ')</small></span><b>' + usd(t.porPeso) + '</b></div>';
-      filas += '<div class="row"><span>Cargo fijo <small>(' + (state.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad') + ')</small></span><b>' + usd(t.fijo) + '</b></div>';
+      filas += state.cargoFijo === false
+        ? '<div class="row"><span>Cargo fijo</span><b>No incluido</b></div>'
+        : '<div class="row"><span>Cargo fijo <small>(' + (state.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad') + ')</small></span><b>' + usd(t.fijo) + '</b></div>';
       if (t.imp > 0) filas += '<div class="row"><span>Impuestos adicionales</span><b>' + usd(t.imp) + '</b></div>';
     }
     $('filas').innerHTML = filas;
@@ -519,6 +547,8 @@
   function actualizarEnvioUI() {
     $('ship').classList.toggle('on', state.envio);
     $('envioSwitch').setAttribute('aria-checked', String(state.envio));
+    $('cargoSwitch').setAttribute('aria-checked', String(state.cargoFijo !== false));
+    $('ciudad').classList.toggle('off', state.cargoFijo === false);
     var btns = document.querySelectorAll('#ciudad button');
     for (var i = 0; i < btns.length; i++) {
       btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-ciudad') === state.ciudad));
@@ -595,6 +625,11 @@
     actualizarEnvioUI();
     actualizar();
   });
+  $('cargoSwitch').addEventListener('click', function () {
+    state.cargoFijo = state.cargoFijo === false;
+    actualizarEnvioUI();
+    actualizar();
+  });
   $('ciudad').addEventListener('click', function (e) {
     var b = e.target.closest('[data-ciudad]');
     if (!b) return;
@@ -628,7 +663,7 @@
     cont.innerHTML = historial.map(function (h) {
       var n = h.items.length;
       var sub = n + (n === 1 ? ' producto' : ' productos');
-      if (h.envio) sub += ' · envío a ' + (h.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad');
+      if (h.envio) sub += h.cargoFijo === false ? ' · envío sin cargo fijo' : ' · envío a ' + (h.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad');
       if (h.tasa) sub += ' · tasa $ ' + Number(h.tasa).toLocaleString('es-CO', { maximumFractionDigits: 2 });
       var enlaces = h.items.filter(function (it) { return urlSegura(it.link); }).map(function (it) {
         return '<a href="' + esc(urlSegura(it.link)) + '" target="_blank" rel="noopener noreferrer">' + esc((it.nombre || '').trim() || 'Ver producto') + ' ↗</a>';
@@ -638,7 +673,7 @@
         '<div class="h-sub">' + esc(sub) + '</div>' +
         (enlaces ? '<div class="h-links">' + enlaces + '</div>' : '') +
         '<div class="h-tot"><span>' + usd(h.totalUsd) + '</span><b>' + (h.totalCop != null ? cop(h.totalCop) + ' COP' : 'Sin tasa') + '</b></div>' +
-        '<div class="h-btns"><button type="button" data-hact="cargar">Editar</button><button type="button" data-hact="exportar">Exportar imagen</button><button type="button" data-hact="borrar" aria-label="Borrar este cálculo">Borrar</button></div>' +
+        '<div class="h-btns"><button type="button" data-hact="cargar">Editar</button><button type="button" data-hact="exportar">Exportar</button><button type="button" data-hact="borrar" aria-label="Borrar este cálculo">Borrar</button></div>' +
       '</div>';
     }).join('');
   }
@@ -654,6 +689,7 @@
       items: copiar(state.items),
       envio: state.envio,
       ciudad: state.ciudad,
+      cargoFijo: state.cargoFijo !== false,
       impuestos: state.impuestos,
       tasa: tasa > 0 ? tasa : null,
       totalUsd: t.total,
@@ -671,6 +707,7 @@
   $('nuevo').addEventListener('click', function () {
     state.items = [nuevoItem()];
     state.envio = false;
+    state.cargoFijo = true;
     state.impuestos = '';
     $('impuestos').value = '';
     actualizarEnvioUI();
@@ -697,6 +734,7 @@
       state.items = copiar(h.items).map(function (it) { var n = migrarItem(it); uid += 1; n.id = 'i' + Date.now() + '_' + uid; return n; });
       state.envio = !!h.envio;
       state.ciudad = h.ciudad || 'bogota';
+      state.cargoFijo = h.cargoFijo !== false;
       state.impuestos = h.impuestos || '';
       $('impuestos').value = state.impuestos;
       actualizarEnvioUI();
@@ -713,8 +751,8 @@
     }
   });
 
-  // ---------- Exportar como imagen ----------
-  var modalUrl = null, modalFile = null, modalPrev = null;
+  // ---------- Exportar recibo (imagen JPG o PDF) ----------
+  var modalFmt = 'jpg', modalBase = 'recibo', modalFiles = {}, modalUrls = {}, modalPrev = null;
 
   function fmtNum(n) { return n.toLocaleString('es-CO', { maximumFractionDigits: 2 }); }
 
@@ -725,8 +763,9 @@
       var v = num(d.v);
       if (v <= 0 || p <= 0) return;
       var q = d.t === 'pct' ? p * Math.min(v, 100) / 100 : Math.min(v, p);
+      var antes = p;
       p -= q;
-      out.push({ etq: d.t === 'pct' ? '−' + fmtNum(Math.min(v, 100)) + ' %' : '−' + usd(q), despues: p });
+      out.push({ etq: d.t === 'pct' ? '−' + fmtNum(Math.min(v, 100)) + ' %' : '−' + usd(q), antes: antes, quita: q, despues: p });
     });
     return out;
   }
@@ -752,13 +791,22 @@
     return lines;
   }
 
-  // Dibuja el cálculo. Con dry=true solo mide y devuelve la altura total.
+  function numeroRecibo(ms) {
+    var d = new Date(ms);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return 'CMS-' + String(d.getFullYear()).slice(2) + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  // Dibuja el recibo. Con dry=true solo mide y devuelve la altura total.
   function dibujar(ctx, snap, logo, W, dry) {
     var F = '"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-    var INK = '#0F1B2D', MUTED = '#5B6778', ACCENT = '#2447F5', SAVE = '#17825A', SUN = '#FFD23F';
+    var INK = '#0F1B2D', MUTED = '#5B6778', ACCENT = '#2447F5', SAVE = '#17825A', SUN = '#FFD23F', LINE = '#C9D1DE';
     var emit = !dry;
-    var pad = 56, inner = W - pad * 2;
+    var m = 60, pw = W - m * 2, x0 = m + 56, x1 = m + pw - 56, cw = x1 - x0, cx = W / 2;
     var t = calcTodo(snap), tasa = num(snap.tasa);
+    var fecha = snap.fecha || Date.now();
+    var ciudad = snap.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad';
+    var numero = numeroRecibo(fecha);
 
     function font(w, s) { ctx.font = w + ' ' + s + 'px ' + F; }
     function trazo(x, y, w, hh, r) {
@@ -783,148 +831,243 @@
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(s, x, y);
     }
-    function linea(x1, x2, y, color) {
+    function dash(y, suave) {
       if (!emit) return;
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = suave ? '#E3E8F0' : LINE;
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x1, y);
-      ctx.lineTo(x2, y);
-      ctx.stroke();
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    function solid(y) {
+      if (!emit) return;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    }
+    // Fila "etiqueta ........ valor"
+    function par(a, b, y, o) {
+      o = o || {};
+      font(o.lw || '400', o.ls || 26); tx(a, x0, y + (o.ls || 26), o.lc || MUTED);
+      font(o.vw || '600', o.vs || 26); tx(b, x1, y + (o.vs || 26), o.vc || INK, 'right');
     }
 
-    function tarjeta(it, idx, y0) {
-      var c = calcItem(it);
-      var x = pad + 32, tw = inner - 64, right = pad + inner - 32;
-      var y = y0 + 32;
-      font('700', 40);
-      var nombre = (it.nombre || '').trim() || 'Producto ' + (idx + 1);
-      wrapTexto(ctx, nombre, tw, 2).forEach(function (l) { tx(l, x, y + 36, INK); y += 48; });
-      var u = urlSegura(it.link);
-      if (u) {
-        font('400', 24);
-        var shown = u.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        wrapTexto(ctx, shown, tw, 3).forEach(function (l) { tx(l, x, y + 26, ACCENT); y += 32; });
-        y += 4;
-      }
-      y += 12;
-      font('500', 28);
-      tx(c.cant > 1 ? 'Precio: ' + usd(c.unitBruto) + ' × ' + c.cant + ' unidades' : 'Precio: ' + usd(c.unitBruto), x, y + 28, MUTED);
-      y += 44;
-      var det = detalleDesc(it);
-      det.forEach(function (d, i) {
-        font('500', 28);
-        tx(det.length > 1 ? 'Descuento ' + (i + 1) + ': ' + d.etq : 'Descuento: ' + d.etq, x, y + 28, SAVE);
-        tx('→ ' + usd(d.despues), right, y + 28, INK, 'right');
-        y += 42;
-      });
-      if (snap.envio && c.libras > 0) {
-        font('400', 26);
-        tx('Peso: ' + lb(c.libras) + ' lb', x, y + 26, MUTED);
-        y += 40;
-      }
-      y += 10;
-      linea(x, right, y, '#E3E8F0');
-      y += 20;
-      font('500', 28);
-      tx(c.cant > 1 ? 'Queda en (total)' : 'Queda en', x, y + 40, MUTED);
-      font('800', 46);
-      tx(usd(c.final), right, y + 42, INK, 'right');
-      y += 64;
-      if (c.descuento > 0 || tasa > 0) {
-        if (c.descuento > 0) {
-          font('700', 26);
-          var real = (1 - c.unitFinal / c.unitBruto) * 100;
-          tx('Ahorras ' + usd(c.descuento) + ' (' + fmtNum(real) + ' %)', x, y + 30, SAVE);
-        }
-        if (tasa > 0) {
-          font('700', 32);
-          tx(cop(c.final * tasa) + ' COP', right, y + 32, INK, 'right');
-        }
-        y += 48;
-      }
-      return y + 32 - y0;
-    }
+    function contenido(y0) {
+      var y = y0;
 
-    function resumen(y0) {
-      var x = pad + 36, right = pad + inner - 36;
-      var y = y0 + 36;
-      function fila(a, b, bColor) {
-        font('400', 28); tx(a, x, y + 28, '#C9D3E3');
-        font('500', 30); tx(b, right, y + 28, bColor || '#FFFFFF', 'right');
-        y += 46;
-      }
-      fila('Productos sin descuento', usd(t.bruto));
-      if (t.descuento > 0) fila('Descuentos', '− ' + usd(t.descuento), '#6FE0B0');
-      fila('Productos con descuento', usd(t.productos));
-      if (snap.envio) {
-        fila('Envío (' + lb(t.libras) + ' lb × ' + usd(TARIFA_LB) + ')', usd(t.porPeso));
-        fila('Cargo fijo (' + (snap.ciudad === 'bogota' ? 'Bogotá' : 'otra ciudad') + ')', usd(t.fijo));
-        if (t.imp > 0) fila('Impuestos adicionales', usd(t.imp));
-      }
-      y += 6;
-      linea(x, right, y, 'rgba(255,255,255,.2)');
-      y += 28;
-      font('400', 30); tx('Total en dólares', x, y + 34, '#C9D3E3');
-      font('800', 44); tx(usd(t.total), right, y + 36, '#FFFFFF', 'right');
-      y += 66;
-      if (tasa > 0) {
-        var texto = cop(t.total * tasa);
-        font('800', 76);
-        tx(texto, x, y + 70, SUN);
-        var w = ctx.measureText(texto).width;
-        font('500', 30);
-        tx(' COP', x + w, y + 70, '#C9D3E3');
-        y += 100;
-      }
-      return y + 36 - y0;
-    }
-
-    // Fondo y encabezado
-    if (emit) {
-      ctx.fillStyle = '#EAEEF4';
-      ctx.fillRect(0, 0, W, ctx.canvas.height);
-      ctx.fillStyle = INK;
-      ctx.fillRect(0, 0, W, 200);
-      if (logo) {
+      // Encabezado
+      if (emit && logo) {
         ctx.save();
-        trazo(pad, 52, 96, 96, 22);
+        trazo(cx - 44, y, 88, 88, 20);
         ctx.clip();
-        ctx.drawImage(logo, pad, 52, 96, 96);
+        ctx.drawImage(logo, cx - 44, y, 88, 88);
         ctx.restore();
       }
+      y += 88 + 26;
+      font('800', 56);
+      tx('¿Cuánto me sale?', cx, y + 40, INK, 'center');
+      y += 62;
+      font('700', 24);
+      if (emit && 'letterSpacing' in ctx) ctx.letterSpacing = '4px';
+      tx('RECIBO DE COMPRA', cx, y + 24, MUTED, 'center');
+      if (emit && 'letterSpacing' in ctx) ctx.letterSpacing = '0px';
+      y += 46;
+      dash(y); y += 30;
+
+      // Datos del recibo
+      var meta = [
+        ['Recibo N.º', numero],
+        ['Fecha', new Date(fecha).toLocaleString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' })]
+      ];
+      if (tasa > 0) meta.push(['Tasa de cambio', '1 USD = $ ' + fmtNum(tasa) + ' COP']);
+      meta.push(['Envío', snap.envio ? (snap.cargoFijo === false ? 'Por peso, sin cargo fijo' : 'A ' + ciudad) : 'No incluido']);
+      meta.forEach(function (r) { par(r[0], r[1], y); y += 40; });
+      y += 6;
+      dash(y); y += 32;
+
+      // Artículos
+      var visibles = snap.items.filter(function (it) { return num(it.precio) > 0; });
+      font('700', 24); tx('ARTÍCULOS', x0, y + 24, MUTED);
+      font('600', 24); tx(visibles.length + (visibles.length === 1 ? ' producto' : ' productos'), x1, y + 24, MUTED, 'right');
+      y += 52;
+
+      visibles.forEach(function (it, i) {
+        var c = calcItem(it);
+        var det = detalleDesc(it);
+        font('700', 34);
+        var nombre = (it.nombre || '').trim() || 'Producto ' + (i + 1);
+        wrapTexto(ctx, (i + 1) + '. ' + nombre, cw, 2).forEach(function (l) { tx(l, x0, y + 34, INK); y += 42; });
+        var u = urlSegura(it.link);
+        if (u) {
+          font('400', 22);
+          var shown = u.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          wrapTexto(ctx, shown, cw, 2).forEach(function (l) { tx(l, x0, y + 22, ACCENT); y += 30; });
+          y += 2;
+        }
+        y += 6;
+        par(c.cant > 1 ? c.cant + ' × ' + usd(c.unitBruto) : 'Precio', usd(c.bruto), y, { vs: 28 });
+        y += 42;
+        det.forEach(function (d, k) {
+          par('Descuento' + (det.length > 1 ? ' ' + (k + 1) : '') + ' · ' + d.etq, '− ' + usd(d.quita * c.cant), y, { lc: SAVE, vc: SAVE });
+          y += 38;
+        });
+        if (snap.envio && c.libras > 0) {
+          par('Peso', lb(c.libras) + ' lb', y, { ls: 24, vs: 24 });
+          y += 34;
+        }
+        y += 6;
+        font('700', 28); tx('Queda en', x0, y + 36, INK);
+        font('800', 38); tx(usd(c.final), x1, y + 38, INK, 'right');
+        y += 54;
+        if (c.descuento > 0 || tasa > 0) {
+          if (c.descuento > 0) {
+            var real = (1 - c.unitFinal / c.unitBruto) * 100;
+            font('700', 24);
+            tx('Ahorras ' + usd(c.descuento) + ' (' + fmtNum(real) + ' %)', x0, y + 24, SAVE);
+          }
+          if (tasa > 0) {
+            font('600', 26);
+            tx(cop(c.final * tasa) + ' COP', x1, y + 26, MUTED, 'right');
+          }
+          y += 36;
+        }
+        y += 14;
+        if (i < visibles.length - 1) { dash(y, true); y += 28; } else { y += 4; }
+      });
+
+      // Totales
+      y += 6; dash(y); y += 32;
+      par('Subtotal', usd(t.bruto), y); y += 40;
+      if (t.descuento > 0) { par('Descuentos', '− ' + usd(t.descuento), y, { lc: SAVE, vc: SAVE }); y += 40; }
+      par('Productos con descuento', usd(t.productos), y, { vw: '700' }); y += 40;
+      if (snap.envio) {
+        par('Envío por peso (' + lb(t.libras) + ' lb × ' + usd(TARIFA_LB) + ')', usd(t.porPeso), y); y += 40;
+        if (snap.cargoFijo === false) par('Cargo fijo', 'No incluido', y);
+        else par('Cargo fijo (' + ciudad + ')', usd(t.fijo), y);
+        y += 40;
+        if (t.imp > 0) { par('Impuestos adicionales', usd(t.imp), y); y += 40; }
+      }
+      y += 8; solid(y); y += 28;
+      font('800', 28); tx('TOTAL EN DÓLARES', x0, y + 46, INK);
+      font('800', 52); tx(usd(t.total), x1, y + 48, INK, 'right');
+      y += 80;
+
+      if (tasa > 0) {
+        var bh = 156;
+        rr(x0, y, cw, bh, 26, INK);
+        font('600', 24); tx('TOTAL A PAGAR EN PESOS', x0 + 32, y + 52, '#B8C3D6');
+        var txt = cop(t.total * tasa);
+        font('800', 72); tx(txt, x0 + 32, y + 126, SUN);
+        var w2 = emit ? ctx.measureText(txt).width : 0;
+        font('600', 30); tx(' COP', x0 + 32 + w2, y + 126, '#C9D3E3');
+        y += bh + 32;
+      } else {
+        y += 10;
+      }
+
+      // Notas
+      dash(y); y += 30;
+      var notas = ['Valores estimados. La tasa puede diferir un poco de la TRM oficial.'];
+      if (snap.envio) {
+        notas.push('Envío: ' + usd(TARIFA_LB) + ' por libra' + (snap.cargoFijo === false
+          ? '; el cargo fijo no está incluido en este cálculo.'
+          : ' más un cargo fijo de ' + usd(t.fijo) + ', que incluye tránsito hasta la puerta, seguro hasta US$ 100,00 y trámite de aduana.') +
+          ' Pueden aplicar impuestos adicionales.');
+      }
+      font('400', 22);
+      notas.forEach(function (n) {
+        wrapTexto(ctx, n, cw, 4).forEach(function (l) { tx(l, x0, y + 22, MUTED); y += 30; });
+        y += 8;
+      });
+
+      // Código de barras decorativo
+      y += 16;
+      var bw = 520, bx = cx - bw / 2, bh2 = 64;
+      if (emit) {
+        var seed = 7;
+        numero.split('').forEach(function (ch) { seed = (seed * 31 + ch.charCodeAt(0)) % 100003; });
+        var bxp = bx, on = true;
+        ctx.fillStyle = INK;
+        while (bxp < bx + bw) {
+          seed = (seed * 1103 + 12345) % 100003;
+          var wb = 2 + (seed % 5);
+          if (bxp + wb > bx + bw) wb = bx + bw - bxp;
+          if (on) ctx.fillRect(bxp, y, wb, bh2);
+          bxp += wb;
+          on = !on;
+        }
+      }
+      y += bh2 + 14;
+      font('600', 22); tx(numero, cx, y + 22, MUTED, 'center'); y += 46;
+      font('600', 24); tx('Hecho con ¿Cuánto me sale?', cx, y + 24, MUTED, 'center'); y += 24;
+      return y;
     }
-    font('800', 52);
-    tx('¿Cuánto me sale?', pad + 120, 100, '#FFFFFF');
-    font('400', 26);
-    tx(fechaHora(snap.fecha || Date.now()) + (tasa > 0 ? '  ·  1 USD = $ ' + fmtNum(tasa) + ' COP' : ''), pad + 120, 142, '#B8C3D6');
 
-    var y = 236;
-    var visibles = snap.items.filter(function (it) { return num(it.precio) > 0; });
-    visibles.forEach(function (it, i) {
-      emit = false;
-      var hh = tarjeta(it, i, y);
-      emit = !dry;
-      rr(pad, y, inner, hh, 28, '#FFFFFF');
-      tarjeta(it, i, y);
-      y += hh + 22;
-    });
+    var py = 64, th = 14, nd = 40, tw = pw / nd;
+    var y0 = py + th + 56;
     emit = false;
-    var hr = resumen(y);
+    var yEnd = contenido(y0);
+    var ph = (yEnd + 56 + th) - py;
     emit = !dry;
-    rr(pad, y, inner, hr, 32, INK);
-    resumen(y);
-    y += hr + 28;
-
-    font('400', 22);
-    tx('La tasa puede diferir un poco de la TRM oficial  ·  ¿Cuánto me sale?', W / 2, y + 22, MUTED, 'center');
-    return y + 22 + 48;
+    if (emit) {
+      ctx.fillStyle = '#E3E8F0';
+      ctx.fillRect(0, 0, W, ctx.canvas.height);
+      ctx.save();
+      ctx.shadowColor = 'rgba(15,27,45,.16)';
+      ctx.shadowBlur = 30;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.moveTo(m, py + th);
+      var i;
+      for (i = 0; i < nd; i++) { ctx.lineTo(m + tw * (i + 0.5), py); ctx.lineTo(m + tw * (i + 1), py + th); }
+      ctx.lineTo(m + pw, py + ph - th);
+      for (i = nd - 1; i >= 0; i--) { ctx.lineTo(m + tw * (i + 0.5), py + ph); ctx.lineTo(m + tw * i, py + ph - th); }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    contenido(y0);
+    return py + ph + 64;
   }
 
-  function nombreArchivo(snap) {
+  // PDF mínimo de una página que contiene la imagen JPEG (sin librerías)
+  function crearPDF(jpeg, imgW, imgH) {
+    var pw = 595.28, ph = pw * imgH / imgW;
+    var partes = [], offs = [], pos = 0;
+    function ascii(s) {
+      var a = new Uint8Array(s.length);
+      for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i) & 255;
+      return a;
+    }
+    function push(x) {
+      var b = typeof x === 'string' ? ascii(x) : x;
+      partes.push(b);
+      pos += b.length;
+    }
+    function obj(n, cuerpo) { offs[n] = pos; push(n + ' 0 obj\n' + cuerpo + '\nendobj\n'); }
+    var P = pw.toFixed(2), Q = ph.toFixed(2);
+    push('%PDF-1.4\n');
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + P + ' ' + Q + '] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>');
+    var cont = 'q ' + P + ' 0 0 ' + Q + ' 0 0 cm /Im0 Do Q';
+    obj(4, '<< /Length ' + cont.length + ' >>\nstream\n' + cont + '\nendstream');
+    offs[5] = pos;
+    push('5 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + imgW + ' /Height ' + imgH + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n');
+    push(jpeg);
+    push('\nendstream\nendobj\n');
+    var xref = pos;
+    var x = 'xref\n0 6\n0000000000 65535 f \n';
+    for (var i = 1; i <= 5; i++) x += ('0000000000' + offs[i]).slice(-10) + ' 00000 n \n';
+    push(x + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+    return new Blob(partes, { type: 'application/pdf' });
+  }
+
+  function nombreBase(snap) {
     var d = new Date(snap.fecha || Date.now());
     var p = function (n) { return String(n).length < 2 ? '0' + n : String(n); };
-    return 'cuanto-me-sale-' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.png';
+    return 'recibo-cuanto-me-sale-' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
 
   function exportarImagen(snap) {
@@ -932,7 +1075,7 @@
       ? Promise.all([
           document.fonts.load('800 40px "Bricolage Grotesque"'),
           document.fonts.load('700 40px "Bricolage Grotesque"'),
-          document.fonts.load('500 40px "Bricolage Grotesque"'),
+          document.fonts.load('600 40px "Bricolage Grotesque"'),
           document.fonts.load('400 40px "Bricolage Grotesque"')
         ]).catch(function () {})
       : Promise.resolve();
@@ -951,21 +1094,46 @@
       var cv = document.createElement('canvas');
       cv.width = W; cv.height = alto;
       dibujar(cv.getContext('2d'), snap, r[1], W, false);
-      cv.toBlob(function (blob) {
-        if (!blob) return;
-        abrirModal(blob, nombreArchivo(snap));
-      }, 'image/png');
+      return new Promise(function (res) { cv.toBlob(res, 'image/jpeg', 0.92); }).then(function (jpg) {
+        if (!jpg) return;
+        return jpg.arrayBuffer().then(function (buf) {
+          var pdf = crearPDF(new Uint8Array(buf), cv.width, cv.height);
+          abrirModal({ jpg: jpg, pdf: pdf }, nombreBase(snap));
+        });
+      });
     });
   }
 
-  function abrirModal(blob, nombre) {
-    if (modalUrl) URL.revokeObjectURL(modalUrl);
-    modalUrl = URL.createObjectURL(blob);
-    modalFile = null;
-    try { modalFile = new File([blob], nombre, { type: 'image/png' }); } catch (e) {}
-    $('modalImg').src = modalUrl;
-    $('modalDownload').setAttribute('data-nombre', nombre);
-    $('modalShare').hidden = !(modalFile && navigator.canShare && navigator.canShare({ files: [modalFile] }));
+  function soltarUrls() {
+    Object.keys(modalUrls).forEach(function (k) { URL.revokeObjectURL(modalUrls[k]); });
+    modalUrls = {};
+  }
+
+  function actualizarFormato() {
+    var btns = document.querySelectorAll('#fmt [data-fmt]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-fmt') === modalFmt));
+    }
+    var f = modalFiles[modalFmt];
+    $('modalShare').hidden = !(f && navigator.canShare && navigator.canShare({ files: [f] }));
+    $('modalDownload').textContent = modalFmt === 'jpg' ? 'Descargar JPG' : 'Descargar PDF';
+    $('fmtHint').textContent = modalFmt === 'jpg'
+      ? 'Imagen JPG: la más fácil para mandar por WhatsApp.'
+      : 'PDF: un solo archivo que se abre en cualquier celular.';
+  }
+
+  function abrirModal(blobs, base) {
+    soltarUrls();
+    modalUrls = { jpg: URL.createObjectURL(blobs.jpg), pdf: URL.createObjectURL(blobs.pdf) };
+    modalFiles = {};
+    try {
+      modalFiles.jpg = new File([blobs.jpg], base + '.jpg', { type: 'image/jpeg' });
+      modalFiles.pdf = new File([blobs.pdf], base + '.pdf', { type: 'application/pdf' });
+    } catch (e) {}
+    modalBase = base;
+    modalFmt = 'jpg';
+    $('modalImg').src = modalUrls.jpg;
+    actualizarFormato();
     modalPrev = document.activeElement;
     $('modal').hidden = false;
     document.body.style.overflow = 'hidden';
@@ -976,31 +1144,40 @@
     $('modal').hidden = true;
     document.body.style.overflow = '';
     $('modalImg').removeAttribute('src');
-    if (modalUrl) { URL.revokeObjectURL(modalUrl); modalUrl = null; }
+    soltarUrls();
     if (modalPrev && modalPrev.focus) { try { modalPrev.focus(); } catch (e) {} }
   }
 
+  $('fmt').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-fmt]');
+    if (!b) return;
+    modalFmt = b.getAttribute('data-fmt');
+    actualizarFormato();
+  });
   $('modalClose').addEventListener('click', cerrarModal);
   $('modal').addEventListener('click', function (e) { if (e.target === $('modal')) cerrarModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
   $('modalDownload').addEventListener('click', function () {
-    if (!modalUrl) return;
+    var url = modalUrls[modalFmt];
+    if (!url) return;
     var a = document.createElement('a');
-    a.href = modalUrl;
-    a.download = $('modalDownload').getAttribute('data-nombre') || 'cuanto-me-sale.png';
+    a.href = url;
+    a.download = modalBase + '.' + modalFmt;
     document.body.appendChild(a);
     a.click();
     a.remove();
   });
   $('modalShare').addEventListener('click', function () {
-    if (!modalFile || !navigator.share) return;
-    navigator.share({ files: [modalFile], title: '¿Cuánto me sale?' }).catch(function () {});
+    var f = modalFiles[modalFmt];
+    if (!f || !navigator.share) return;
+    navigator.share({ files: [f], title: '¿Cuánto me sale?' }).catch(function () {});
   });
   $('exportar').addEventListener('click', function () {
     exportarImagen({
       items: state.items,
       envio: state.envio,
       ciudad: state.ciudad,
+      cargoFijo: state.cargoFijo !== false,
       impuestos: state.impuestos,
       tasa: num(state.tasa) || null,
       fecha: Date.now()
